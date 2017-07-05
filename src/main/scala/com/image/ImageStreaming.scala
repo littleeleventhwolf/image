@@ -8,21 +8,22 @@ import org.apache.spark.storage.StorageLevel
 
 object ImageStreaming {
 
+	//imageModel can be rewrite to satisfy different requirement
   def imageModel(image : BytesWritable) = image.getLength
 
   def main(args: Array[String]) {
-		if (args.length < 3) {
-      		System.err.println("Usage: ImageStreaming <seconds> <hostname> <port>")
-      		System.exit(1)
-    }
-   	val s = new SparkConf().setMaster("local[2]").setAppName("face")
-											  .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+		if (args.length < 4) {
+			System.err.println("Usage: ImageStreaming <seconds> <hostname> <port> <hdfs_path>")
+			System.exit(1)
+		}
+		val s = new SparkConf().setMaster("local[2]").setAppName("face")
+			.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
  		val sc = new SparkContext(s)
  		val ssc = new StreamingContext(sc, Seconds(args(0).toInt))
  		val img = new ImageInputDStream(ssc, args(1), args(2).toInt,
         		           StorageLevel.MEMORY_AND_DISK_SER)//调用重写的 ImageInputDStream 方法读取图片
  		val imgMap = img.map(x => (new Text(System.currentTimeMillis().toString), x))
- 		imgMap.saveAsNewAPIHadoopFiles("hdfs://localhost:9000/user/hadoop/image/", "", classOf[Text],
+ 		imgMap.saveAsNewAPIHadoopFiles(args(3), "", classOf[Text],
         		   classOf[BytesWritable], classOf[ImageFileOutputFormat],
                 		       ssc.sparkContext.hadoopConfiguration)//调用 ImageFileOutputFormat 方法写入图片
  
